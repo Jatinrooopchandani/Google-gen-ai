@@ -10,11 +10,10 @@ export async function POST(req: Request) {
 
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) {
-      console.error("❌ GOOGLE_API_KEY is missing in .env.local");
+      console.error("GOOGLE_API_KEY is missing in .env.local");
       return NextResponse.json({ error: "API key is missing" }, { status: 500 });
     }
 
-    // ✅ Correct API URL (matching your cURL request)
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(apiUrl, {
@@ -27,7 +26,7 @@ export async function POST(req: Request) {
 
     if (!response.ok) {
       const errorMessage = await response.text();
-      console.error(`❌ Gemini API Error: ${response.status} - ${errorMessage}`);
+      console.error(`Gemini API Error: ${response.status} - ${errorMessage}`);
       return NextResponse.json({ error: "Failed to fetch response from Gemini API" }, { status: response.status });
     }
 
@@ -35,7 +34,7 @@ export async function POST(req: Request) {
     return NextResponse.json(data);
 
   } catch (error) {
-    console.error("❌ Server Error:", error);
+    console.error("Server Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

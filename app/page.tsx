@@ -4,7 +4,7 @@ export default function Page() {
   return (
     <div>
       <h1>Ask Gemini</h1>
-      <GeminiChat /> {/* Using the client component */}
+      <GeminiChat /> 
     </div>
   );
 }

@@ -13,7 +13,7 @@ export const fetchGeminiResponse = async (prompt: string) => {
   
       return response.json();
     } catch (error) {
-      console.error("❌ Fetch Error:", error);
+      console.error("Fetch Error:", error);
       throw error;
     }
   };

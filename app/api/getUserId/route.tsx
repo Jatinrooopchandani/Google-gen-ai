@@ -3,21 +3,24 @@ import { v4 as uuidv4 } from "uuid";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const cookieStore = await cookies(); 
-  let userId = cookieStore.get("user_id")?.value;
+  try {
+    const cookieStore = await cookies();
+    let userId = cookieStore.get("user_id")?.value;
 
-  if (!userId) {
-    userId = uuidv4();
+    if (!userId) {
+      userId = uuidv4(); // ✅ Generate a valid UUID
+      cookieStore.set("user_id", userId, {
+        maxAge: 60 * 60 * 24 * 365, // 1 year
+        path: "/",
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+      });
+    }
 
-    const response = NextResponse.json({ userId });
-    response.headers.set(
-      "Set-Cookie",
-      `user_id=${userId}; Path=/; Max-Age=${60 * 60 * 24 * 365}; HttpOnly; ${
-        process.env.NODE_ENV === "production" ? "Secure" : ""
-      }`
-    );
-    return response;
+    console.log("✅ User ID:", userId); // Debugging
+    return NextResponse.json({ userId });
+  } catch (error) {
+    console.error("❌ Error in getUserId route:", error);
+    return NextResponse.json({ error: "Failed to fetch user ID" }, { status: 500 });
   }
-
-  return NextResponse.json({ userId });
 }

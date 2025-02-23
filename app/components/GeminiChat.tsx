@@ -18,7 +18,7 @@ export default function GeminiChat() {
   useEffect(() => {
     const authenticateUser = async () => {
       try {
-        const { data: userData, error: userError } = await supabase.auth.getUser();
+        const { data: userData} = await supabase.auth.getUser();
       let currentUserId = userData?.user?.id;
         if(!currentUserId){
           const {data: authData, error: authError} = await supabase.auth.signInAnonymously();

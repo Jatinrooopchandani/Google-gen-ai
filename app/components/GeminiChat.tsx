@@ -2,13 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { fetchGeminiResponse } from "../utils/gemini";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../utils/supabase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-// ✅ Initialize Supabase Client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+
 
 export default function GeminiChat() {
   const [input, setInput] = useState("");
@@ -18,24 +15,26 @@ export default function GeminiChat() {
   const [history, setHistory] = useState<{ prompt: string; response: string }[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // ✅ Fetch User ID from API on mount
   useEffect(() => {
-    const fetchUserId = async () => {
+    const authenticateUser = async () => {
       try {
-        const res = await fetch("/api/getUserId");
-        const data = await res.json();
-        if (data.userId) {
-          console.log("✅ Retrieved User ID:", data.userId);
-          setUserId(data.userId);
-        } else {
-          console.error("❌ Failed to retrieve user ID");
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+      let currentUserId = userData?.user?.id;
+        if(!currentUserId){
+          const {data: authData, error: authError} = await supabase.auth.signInAnonymously();
+          if(authError) throw new Error(authError.message);
+          currentUserId = authData?.user?.id;
+        }
+        if (currentUserId) {
+          console.log("✅ Logged in as:", currentUserId);
+          setUserId(currentUserId);
         }
       } catch (err) {
-        console.error("❌ Error fetching user ID:", err);
+        console.error("❌ Auth Error:", err);
+        setError("Failed to authenticate user");
       }
     };
-
-    fetchUserId();
+    authenticateUser();
   }, []);
 
     const fetchHistory = async () => {
@@ -66,7 +65,6 @@ export default function GeminiChat() {
 
       setResponse(outputText);
 
-      // ✅ Save to Supabase
       const { error } = await supabase
         .from("prompts")
         .insert([{ user_id: userId, prompt: input, response: outputText }]);

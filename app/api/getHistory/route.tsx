@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     const { data, error } = await supabase
       .from("prompts")
       .select("prompt, response")
-      .filter("user_id", "eq", userId) // ✅ Fix: Ensuring correct filtering
+      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     if (error) throw error;

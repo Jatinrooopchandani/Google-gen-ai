@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function createContext(req: NextRequest) {
-  let res = NextResponse.next();
+  const res = NextResponse.next();
 
   console.log("🟢 Processing request in createContext...");
 

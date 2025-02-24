@@ -6,7 +6,6 @@ import { NextRequest } from "next/server";
 export default async function handler(req: NextRequest) {
   console.log(" Handling API Request at /api/trpc");
 
-  const context = await createContext(req); // Ensure session is passed
 
   return fetchRequestHandler({
     endpoint: "/api/trpc",

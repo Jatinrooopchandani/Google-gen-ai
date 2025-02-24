@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { fetchGeminiResponse } from "../utils/gemini";
 import { supabase } from "../utils/supabase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-
+import { trpc } from "../utils/trpcClient";
 
 export default function GeminiChat() {
   const [input, setInput] = useState("");
@@ -14,7 +13,34 @@ export default function GeminiChat() {
   const [error, setError] = useState("");
   const [history, setHistory] = useState<{ prompt: string; response: string }[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
-
+  const { data, refetch } = trpc.getHistory.useQuery(
+    { userId:  userId?? "" },
+    { enabled: false }
+  );
+  
+  useEffect(() => {
+    if (data) {
+      console.log("Loaded history:", data);
+      setHistory(data.map((item)=>({
+        prompt: item.prompt || "",
+        response: item.response || "",
+      })
+    ));
+    }
+  }, [data]);
+  const geminiMutation = trpc.getGeminiResponse.useMutation({
+    onSuccess: (data) => {
+      if (data) {
+        setResponse(data.response);
+      }
+      else{
+        console.log("ERRORRRR");
+      }
+    },
+    onError: (error) => {
+      setError(error.message);
+    },
+  });
   useEffect(() => {
     const authenticateUser = async () => {
       try {
@@ -26,30 +52,18 @@ export default function GeminiChat() {
           currentUserId = authData?.user?.id;
         }
         if (currentUserId) {
-          console.log("✅ Logged in as:", currentUserId);
+          console.log("Logged in as:", currentUserId);
           setUserId(currentUserId);
         }
       } catch (err) {
-        console.error("❌ Auth Error:", err);
+        console.error(" Auth Error:", err);
         setError("Failed to authenticate user");
       }
     };
     authenticateUser();
   }, []);
 
-    const fetchHistory = async () => {
-      try {
-        const res = await fetch(`/api/getHistory?userId=${userId}`);
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-
-        console.log("✅ Loaded history:", data);
-        setHistory(data);
-      } catch (err) {
-        console.error("❌ Fetch History Error:", err);
-        setError("Failed to fetch history");
-      }
-    };
+    
 
 
   const handleSubmit = async () => {
@@ -59,30 +73,9 @@ export default function GeminiChat() {
     setResponse("");
     setError("");
 
-    try {
-      const result = await fetchGeminiResponse(input);
-      const outputText = result?.candidates?.[0]?.content?.parts?.[0]?.text || "No response from API";
-
-      setResponse(outputText);
-
-      const { error } = await supabase
-        .from("prompts")
-        .insert([{ user_id: userId, prompt: input, response: outputText }]);
-
-      if (error) {
-        console.error("❌ Supabase Insert Error:", error.message);
-        setError(`Failed to save to database: ${error.message}`);
-        return;
-      }
-
-      // ✅ Update history
-      setHistory([{ prompt: input, response: outputText }, ...history]);
-    } catch (err) {
-      console.error("❌ API Error:", err);
-      setError("Failed to fetch response");
-    }
-
+    geminiMutation.mutate({ userId: userId, prompt: input });
     setLoading(false);
+    
   };
 
   return (
@@ -97,9 +90,9 @@ export default function GeminiChat() {
       <Button onClick={handleSubmit} disabled={loading} className="w-full">
         {loading ? "Loading..." : "Send"}
       </Button>
-      <Button onClick={fetchHistory} className="w-full hover:placeholder-blue-300">
-        View History
-      </Button>
+      <Button onClick={() => refetch()} className="w-full">
+  Refresh History
+</Button>
       {error && <p className="text-red-500">{error}</p>}
       {response && <p className="text-gray-700"><strong>Response:</strong> {response}</p>}
       

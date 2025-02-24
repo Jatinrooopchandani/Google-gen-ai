@@ -3,7 +3,7 @@ import { appRouter } from "../../../utils/trpc";
 import { createContext } from "../../../utils/trpcContext";
 import { NextRequest } from "next/server";
 
-export default async function handler(req: NextRequest) {
+async function handler(req: NextRequest) {
   console.log(" Handling API Request at /api/trpc");
 
 

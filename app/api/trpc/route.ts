@@ -1,6 +1,6 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
-import { appRouter } from "../../../utils/trpc";
-import { createContext } from "../../../utils/trpcContext";
+import { appRouter } from "../../utils/trpc";
+import { createContext } from "../../utils/trpcContext";
 import { NextRequest } from "next/server";
 
 export default async function handler(req: NextRequest) {

@@ -15,7 +15,7 @@ export async function createContext(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({
             request,
           })
@@ -36,7 +36,8 @@ export async function createContext(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
+  if(!user)
+      return "No user found";
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
   // If you're creating a new response object with NextResponse.next() make sure to:
   // 1. Pass the request in it, like so:

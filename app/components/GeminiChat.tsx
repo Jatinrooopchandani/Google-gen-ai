@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../utils/supabase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,69 +13,110 @@ export default function GeminiChat() {
   const [error, setError] = useState("");
   const [history, setHistory] = useState<{ prompt: string; response: string }[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
-  const { data, refetch } = trpc.getHistory.useQuery(
-    { userId:  userId?? "" },
-    { enabled: false }
-  );
-  
-  useEffect(() => {
-    if (data) {
-      console.log("Loaded history:", data);
-      setHistory(data.map((item)=>({
-        prompt: item.prompt || "",
-        response: item.response || "",
-      })
-    ));
-    }
-  }, [data]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
   const geminiMutation = trpc.getGeminiResponse.useMutation({
-    onSuccess: (data) => {
-      if (data) {
+    onSuccess: async (data) => {
+      if (data?.response) {
         setResponse(data.response);
-      }
-      else{
-        console.log("ERRORRRR");
+        await insertPrompt(input, data.response); 
+      } else {
+        console.error(" ERROR: No response from Gemini");
       }
     },
     onError: (error) => {
       setError(error.message);
     },
   });
-  useEffect(() => {
-    const authenticateUser = async () => {
-      try {
-        const { data: userData} = await supabase.auth.getUser();
+
+  const authenticateUser = useCallback(async () => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
       let currentUserId = userData?.user?.id;
-        if(!currentUserId){
-          const {data: authData, error: authError} = await supabase.auth.signInAnonymously();
-          if(authError) throw new Error(authError.message);
-          currentUserId = authData?.user?.id;
-        }
-        if (currentUserId) {
-          console.log("Logged in as:", currentUserId);
-          setUserId(currentUserId);
-        }
-      } catch (err) {
-        console.error(" Auth Error:", err);
-        setError("Failed to authenticate user");
+
+      if (!currentUserId) {
+        const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+        if (authError) throw new Error(authError.message);
+        currentUserId = authData?.user?.id;
       }
-    };
-    authenticateUser();
+
+      if (currentUserId) {
+        console.log("Logged in as:", currentUserId);
+        setUserId(currentUserId);
+        setIsAuthenticated(true);
+        getHistory(currentUserId); 
+      }
+    } catch (err) {
+      console.error(" Auth Error:", err);
+      setError("Failed to authenticate user");
+    }
   }, []);
 
-    
+  const getHistory = useCallback(
+    async (uid: string | null = userId) => {
+      if (!uid) return;
 
+      try {
+        const { data, error } = await supabase
+          .from("prompts")
+          .select("prompt, response")
+          .eq("user_id", uid)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error(" Supabase Error:", error.message);
+          setError("Failed to load history");
+          return;
+        }
+
+        console.log(" Loaded history:", data);
+        setHistory(data.map((item) => ({ prompt: item.prompt || "", response: item.response || "" })));
+      } catch (err) {
+        console.error(" Server Error:", err);
+        setError("Failed to fetch history");
+      }
+    },
+    [userId]
+  );
+
+  useEffect(() => {
+    authenticateUser();
+  }, [authenticateUser]);
+
+  const insertPrompt = async (prompt: string, response: string) => {
+    if (!userId) return;
+
+    try {
+      const { error } = await supabase
+        .from("prompts")
+        .insert([{ user_id: userId, prompt, response }]);
+
+      if (error) {
+        console.error(" Supabase Insert Error:", error.message);
+        return;
+      }
+
+      console.log(" Prompt saved to history");
+      getHistory(); 
+    } catch (err) {
+      console.error(" Insert Error:", err);
+    }
+  };
 
   const handleSubmit = async () => {
-    if (!input.trim() || !userId) return;
+    if (!input.trim()) return;
+    if (!isAuthenticated || !userId) {
+      console.error(" Cannot send request: User not authenticated");
+      setError("You must be logged in to send requests.");
+      return;
+    }
 
     setLoading(true);
     setResponse("");
     setError("");
 
-    geminiMutation.mutate({ userId: userId, prompt: input });
+    geminiMutation.mutate({ userId, prompt: input });
     setLoading(false);
-    
   };
 
   return (
@@ -87,15 +128,12 @@ export default function GeminiChat() {
         placeholder="Ask Gemini..."
         className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring focus:ring-blue-300"
       />
-      <Button onClick={handleSubmit} disabled={loading} className="w-full">
+      <Button onClick={handleSubmit} disabled={loading || !isAuthenticated} className="w-full">
         {loading ? "Loading..." : "Send"}
       </Button>
-      <Button onClick={() => refetch()} className="w-full">
-  Refresh History
-</Button>
       {error && <p className="text-red-500">{error}</p>}
       {response && <p className="text-gray-700"><strong>Response:</strong> {response}</p>}
-      
+
       <h3 className="text-lg font-semibold">Prompt History</h3>
       <ul className="space-y-2">
         {history.map((item, index) => (

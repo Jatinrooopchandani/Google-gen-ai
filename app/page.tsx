@@ -1,4 +1,4 @@
-import GeminiChat from "./components/GeminiChat";
+import GeminiChat from "./_components/GeminiChat";
 
 export default function Page() {
   return (

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "../utils/supabase";
+import { supabase } from "../../utils/supabase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { trpc } from "../utils/trpcClient";
+import { trpc } from "../../utils/trpcClient";
 
 export default function GeminiChat() {
   const [input, setInput] = useState("");
